@@ -12,7 +12,15 @@ class SmsTestPage extends StatefulWidget {
 class _SmsTestPageState extends State<SmsTestPage> {
   final _messageController = TextEditingController();
   final _senderController = TextEditingController();
-  TransactionData? _result;
+  final ValueNotifier<TransactionData?> _resultNotifier = ValueNotifier<TransactionData?>(null);
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _senderController.dispose();
+    _resultNotifier.dispose();
+    super.dispose();
+  }
 
   void _extractTransaction() {
     final message = _messageController.text;
@@ -20,9 +28,7 @@ class _SmsTestPageState extends State<SmsTestPage> {
     
     if (message.isEmpty || sender.isEmpty) return;
     
-    setState(() {
-      _result = SmsExtractorService.extractTransaction(message, sender);
-    });
+    _resultNotifier.value = SmsExtractorService.extractTransaction(message, sender);
   }
 
   @override
@@ -55,34 +61,40 @@ class _SmsTestPageState extends State<SmsTestPage> {
               child: const Text('Extract Transaction'),
             ),
             const SizedBox(height: 16),
-            if (_result != null) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Valid: ${_result!.isValid}', style: TextStyle(
-                        color: _result!.isValid ? Colors.green : Colors.red,
-                        fontWeight: FontWeight.bold,
-                      )),
-                      if (_result!.isValid) ...[
-                        Text('Type: ${_result!.transactionType}'),
-                        Text('Amount: ₹${_result!.amount}'),
-                        if (_result!.accountLast4Digits != null)
-                          Text('Account: ****${_result!.accountLast4Digits}'),
-                        if (_result!.transactionMode != null)
-                          Text('Mode: ${_result!.transactionMode}'),
-                        if (_result!.availableBalance != null)
-                          Text('Balance: ₹${_result!.availableBalance}'),
-                        if (_result!.bankName != null)
-                          Text('Bank: ${_result!.bankName}'),
+            ValueListenableBuilder<TransactionData?>(
+              valueListenable: _resultNotifier,
+              builder: (context, result, _) {
+                if (result == null) {
+                  return const SizedBox.shrink();
+                }
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Valid: ${result.isValid}', style: TextStyle(
+                          color: result.isValid ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.bold,
+                        )),
+                        if (result.isValid) ...[
+                          Text('Type: ${result.transactionType}'),
+                          Text('Amount: ₹${result.amount}'),
+                          if (result.accountLast4Digits != null)
+                            Text('Account: ****${result.accountLast4Digits}'),
+                          if (result.transactionMode != null)
+                            Text('Mode: ${result.transactionMode}'),
+                          if (result.availableBalance != null)
+                            Text('Balance: ₹${result.availableBalance}'),
+                          if (result.bankName != null)
+                            Text('Bank: ${result.bankName}'),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ],
+                );
+              },
+            ),
           ],
         ),
       ),

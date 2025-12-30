@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/transaction.dart';
 import '../services/stats_service.dart';
-import '../services/gemma_service.dart';
+// import '../services/gemma_service.dart';
 
 class CoachPage extends StatefulWidget {
   final List<TransactionModel> transactions;
@@ -13,63 +13,75 @@ class CoachPage extends StatefulWidget {
 }
 
 class _CoachPageState extends State<CoachPage> {
-  String _advice = '';
-  bool _loading = false;
+  final ValueNotifier<String> _adviceNotifier = ValueNotifier<String>('');
+  final ValueNotifier<bool> _loadingNotifier = ValueNotifier<bool>(false);
   
   // Configurable values - can be made editable later
   final double _approxIncome = 45000;
   final double _approxEmi = 10000;
 
+  @override
+  void dispose() {
+    _adviceNotifier.dispose();
+    _loadingNotifier.dispose();
+    super.dispose();
+  }
+
+  String _generatePlaceholderAdvice(MonthlySnapshot snapshot, Flags flags) {
+    final buffer = StringBuffer();
+    buffer.writeln('Financial Analysis for ${snapshot.monthId}:\n');
+    buffer.writeln('Total Income: ₹${snapshot.income.toStringAsFixed(2)}');
+    buffer.writeln('Total Expenses: ₹${snapshot.expense.toStringAsFixed(2)}');
+    buffer.writeln('Net Savings: ₹${snapshot.savings.toStringAsFixed(2)}');
+    buffer.writeln('Savings Rate: ${(snapshot.savingsRate * 100).toStringAsFixed(1)}%\n');
+    buffer.writeln('Financial Health Flags:');
+    buffer.writeln('• Savings: ${flags.savingsFlag.toUpperCase()}');
+    buffer.writeln('• Lifestyle: ${flags.lifestyleFlag.toUpperCase()}');
+    buffer.writeln('• Debt: ${flags.debtFlag.toUpperCase()}\n');
+    buffer.writeln('Note: AI-powered advice will be available once GemmaService is implemented.');
+    return buffer.toString();
+  }
+
   Future<void> _askCoach() async {
     if (widget.transactions.isEmpty) {
-      setState(() {
-        _advice = 'No data yet. Import SMS first.';
-      });
+      _adviceNotifier.value = 'No data yet. Import SMS first.';
       return;
     }
 
-    setState(() {
-      _loading = true;
-      _advice = '';
-    });
+    _loadingNotifier.value = true;
+    _adviceNotifier.value = '';
 
     try {
       final grouped = StatsService.groupByMonth(widget.transactions);
       final sortedMonths = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
       
       if (sortedMonths.isEmpty) {
-        setState(() {
-          _advice = 'No monthly data available.';
-        });
+        _adviceNotifier.value = 'No monthly data available.';
         return;
       }
 
       final latestMonth = sortedMonths.first;
       final latestSnapshot = StatsService.buildSnapshotForMonth(latestMonth, grouped[latestMonth]!);
       
-      final history = sortedMonths.take(3).map((monthId) => 
-        StatsService.buildSnapshotForMonth(monthId, grouped[monthId]!)
-      ).toList();
-      
       final flags = StatsService.computeFlags(latestSnapshot, _approxEmi, _approxIncome);
       
-      final advice = await GemmaService.getAdvice(
-        snapshot: latestSnapshot,
-        flags: flags,
-        history: history,
-      );
+      // TODO: Implement GemmaService when available
+      // final history = sortedMonths.take(3).map((monthId) => 
+      //   StatsService.buildSnapshotForMonth(monthId, grouped[monthId]!)
+      // ).toList();
+      // final advice = await GemmaService.getAdvice(
+      //   snapshot: latestSnapshot,
+      //   flags: flags,
+      //   history: history,
+      // );
       
-      setState(() {
-        _advice = advice;
-      });
+      // Placeholder advice based on flags
+      final advice = _generatePlaceholderAdvice(latestSnapshot, flags);
+      _adviceNotifier.value = advice;
     } catch (e) {
-      setState(() {
-        _advice = 'Error getting advice: $e';
-      });
+      _adviceNotifier.value = 'Error getting advice: $e';
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      _loadingNotifier.value = false;
     }
   }
 
@@ -79,38 +91,50 @@ class _CoachPageState extends State<CoachPage> {
       padding: const EdgeInsets.all(16.0),
       child: Column(
         children: [
-          ElevatedButton(
-            onPressed: _loading ? null : _askCoach,
-            child: _loading 
-              ? const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    SizedBox(width: 8),
-                    Text('Getting Advice...'),
-                  ],
-                )
-              : const Text('Ask Coach for This Month'),
+          ValueListenableBuilder<bool>(
+            valueListenable: _loadingNotifier,
+            builder: (context, loading, _) {
+              return ElevatedButton(
+                onPressed: loading ? null : _askCoach,
+                child: loading
+                    ? const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text('Getting Advice...'),
+                        ],
+                      )
+                    : const Text('Ask Coach for This Month'),
+              );
+            },
           ),
           const SizedBox(height: 16),
-          if (_advice.isNotEmpty)
-            Expanded(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: SingleChildScrollView(
-                    child: Text(
-                      _advice,
-                      style: const TextStyle(fontSize: 14),
+          ValueListenableBuilder<String>(
+            valueListenable: _adviceNotifier,
+            builder: (context, advice, _) {
+              if (advice.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return Expanded(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: SingleChildScrollView(
+                      child: Text(
+                        advice,
+                        style: const TextStyle(fontSize: 14),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
+          ),
           const SizedBox(height: 16),
           const Card(
             child: Padding(
