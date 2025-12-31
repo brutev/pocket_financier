@@ -78,7 +78,7 @@ class _DebugPageState extends State<DebugPage> {
                               title: Text('₹${tx.amount} - ${tx.type.toUpperCase()}'),
                               subtitle: Text('${tx.category} | ${tx.date.toString().split(' ')[0]}'),
                               trailing: Text(tx.description.length > 30 
-                                ? tx.description.substring(0, 30) + '...' 
+                                ? '${tx.description.substring(0, 30)}...' 
                                 : tx.description),
                             );
                           },
