@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/transaction.dart';
@@ -8,24 +9,23 @@ import '../models/sms_parse_result.dart';
 class SmsService {
   static final SmsQuery _query = SmsQuery();
   static const _bankSenders = {'HDFCBK', 'SBIINB', 'ICICIB', 'AXISBK', 'PNBSMS', 'SCBANK', 'CITIBK', 'KOTAK', 'YESBNK', 'BOIIND', 'INDBNK', 'UNIONB', 'CANBKS', 'MAHABK', 'FEDBK', 'IDBIBK', 'UCOBKS', 'PSBANK'};
-  static const _spamKeywords = ['click here', 'claim now', 'verify now', 'update kyc', 'congratulations', 'won', 'prize', 'lottery', 'reward', 'loan approved', 'instant loan', 'pre-approved', 'pre approved', 'limited time', 'expire', 'suspended', 'blocked', 'call immediately', 'urgent action', 'act now', 'www.', 'http://', 'https://', 'bit.ly', 'tinyurl', 'otp'];
 
   static Future<bool> requestPermission() async {
     final status = await Permission.sms.request();
     return status.isGranted;
   }
 
-  static Future<void> importSms() async {
+  static Future<void> importSms({int daysBack = 90}) async {
     // Check permission first
     final hasPermission = await Permission.sms.isGranted;
-    print('SMS Permission granted: $hasPermission');
+    debugPrint('[SmsService] SMS Permission granted: $hasPermission');
     
     if (!hasPermission) {
-      print('Requesting SMS permission...');
+      debugPrint('[SmsService] Requesting SMS permission...');
       final status = await Permission.sms.request();
-      print('Permission status: $status');
+      debugPrint('[SmsService] Permission status: $status');
       if (!status.isGranted) {
-        print('SMS permission denied - cannot read SMS');
+        debugPrint('[SmsService] SMS permission denied - cannot read SMS');
         return;
       }
     }
@@ -36,26 +36,29 @@ class SmsService {
         count: 1000,
       );
       
-      // Filter messages from last 1 month
-      final oneMonthAgo = DateTime.now().subtract(const Duration(days: 30));
+      // Filter messages from specified days back (default 90 days = 3 months)
+      final cutoffDate = DateTime.now().subtract(Duration(days: daysBack));
       final recentMessages = messages.where((msg) => 
-        msg.date != null && msg.date!.isAfter(oneMonthAgo)
+        msg.date != null && msg.date!.isAfter(cutoffDate)
       ).toList();
       
-      print('Extracting SMS from last 1 month (${recentMessages.length} messages)');
+      debugPrint('[SmsService] Extracting SMS from last $daysBack days (${recentMessages.length} messages)');
 
       int total = recentMessages.length;
       int bankSms = 0;
       int processed = 0;
       int inserted = 0;
       
-      print('Found $total recent SMS messages');
+      debugPrint('[SmsService] Found $total recent SMS messages');
       
-      for (int i = 0; i < recentMessages.length && i < 10; i++) {
-        final message = recentMessages[i];
-        final sender = message.address ?? 'Unknown';
-        final body = message.body ?? 'No body';
-        print('SMS $i: From $sender - ${body.substring(0, body.length > 30 ? 30 : body.length)}...');
+      if (kDebugMode) {
+        // Only log first 10 messages in debug mode
+        for (int i = 0; i < recentMessages.length && i < 10; i++) {
+          final message = recentMessages[i];
+          final sender = message.address ?? 'Unknown';
+          final body = message.body ?? 'No body';
+          debugPrint('[SmsService] SMS $i: From $sender - ${body.substring(0, body.length > 30 ? 30 : body.length)}...');
+        }
       }
       
       for (final message in recentMessages) {
@@ -65,7 +68,9 @@ class SmsService {
         final senderUpper = sender.toUpperCase();
         if (_bankSenders.any((bank) => senderUpper.contains(bank))) {
           bankSms++;
-          print('Bank SMS from $sender: ${body.substring(0, body.length > 50 ? 50 : body.length)}...');
+          if (kDebugMode) {
+            debugPrint('[SmsService] Bank SMS from $sender: ${body.substring(0, body.length > 50 ? 50 : body.length)}...');
+          }
         }
         
         final transaction = _parseTransaction(message);
@@ -76,9 +81,9 @@ class SmsService {
         }
       }
       
-      print('SMS Import: Total $total, Bank SMS $bankSms, Processed $processed, Inserted $inserted');
+      debugPrint('[SmsService] Import Summary: Total=$total, Bank SMS=$bankSms, Processed=$processed, Inserted=$inserted');
     } catch (e) {
-      print('Error reading SMS: $e');
+      debugPrint('[SmsService] Error reading SMS: $e');
     }
   }
 
@@ -91,7 +96,9 @@ class SmsService {
     
     // Only accept HIGH and MEDIUM confidence results
     if (!result.isValid || result.confidence == ConfidenceLevel.low || result.confidence == ConfidenceLevel.invalid) {
-      print('SMS rejected - Confidence: ${result.confidence}, Reasons: ${result.failureReasons}');
+      if (kDebugMode) {
+        debugPrint('[SmsService] SMS rejected - Confidence: ${result.confidence}, Reasons: ${result.failureReasons}');
+      }
       return null;
     }
     
@@ -99,30 +106,66 @@ class SmsService {
       return null;
     }
     
-    final category = _guessCategory(body);
-    final description = body.length > 120 ? body.substring(0, 120) + '...' : body;
+    final category = _guessCategory(body, result.merchantName);
+    final description = body.length > 200 ? '${body.substring(0, 200)}...' : body;
     final date = message.date ?? DateTime.now();
+    
+    // Extract transaction reference and UPI ID from SMS text
+    final refRegex = RegExp(r'(?:Ref|Ref No|Reference|Txn Ref)[\s:]*([A-Z0-9]{8,20})', caseSensitive: false);
+    final refMatch = refRegex.firstMatch(body);
+    final transactionRef = refMatch?.group(1);
+    
+    final upiRegex = RegExp(r'UPI[/-]?([A-Z0-9]{12})', caseSensitive: false);
+    final upiMatch = upiRegex.firstMatch(body);
+    final upiTransactionId = upiMatch?.group(1);
 
-    print('SMS parsed successfully - Confidence: ${result.confidence}, Method: ${result.extractionMethod}');
+    if (kDebugMode) {
+      debugPrint('[SmsService] SMS parsed successfully - Confidence: ${result.confidence}, Method: ${result.extractionMethod}');
+    }
     
     return TransactionModel(
       date: date,
+      transactionDate: result.transactionDate,
       amount: result.amount!,
       type: result.transactionType!.toLowerCase(),
       description: description,
       category: category,
+      accountLast4: result.accountLast4Digits,
+      transactionMode: result.transactionMode,
+      availableBalance: result.availableBalance,
+      bankName: result.bankName,
+      transactionRef: transactionRef,
+      merchantName: result.merchantName,
+      upiTransactionId: upiTransactionId,
     );
   }
-
-  static String _guessCategory(String body) {
+  
+  static String _guessCategory(String body, String? merchantName) {
     final bodyLower = body.toLowerCase();
+    final merchantLower = merchantName?.toLowerCase() ?? '';
     
-    if (bodyLower.contains(RegExp(r'swiggy|zomato|restaurant|food|dominos|kfc|mcdonalds'))) return 'Food';
-    if (bodyLower.contains(RegExp(r'amazon|flipkart|myntra|ajio|shopping|mall'))) return 'Shopping';
-    if (bodyLower.contains(RegExp(r'fuel|petrol|hpcl|bpcl|iocl|diesel'))) return 'Fuel';
-    if (bodyLower.contains('rent')) return 'Rent';
-    if (bodyLower.contains(RegExp(r'bill|postpaid|prepaid|electricity|mobile|dth|recharge'))) return 'Bills';
+    // Enhanced categorization with merchant name
+    if (bodyLower.contains(RegExp(r'swiggy|zomato|restaurant|food|dominos|kfc|mcdonalds|pizza|burger')) ||
+        merchantLower.contains(RegExp(r'swiggy|zomato|restaurant|food|dominos|kfc|mcdonalds'))) {
+      return 'Food';
+    }
+    if (bodyLower.contains(RegExp(r'amazon|flipkart|myntra|ajio|shopping|mall|snapdeal')) ||
+        merchantLower.contains(RegExp(r'amazon|flipkart|myntra|ajio|shopping'))) {
+      return 'Shopping';
+    }
+    if (bodyLower.contains(RegExp(r'fuel|petrol|hpcl|bpcl|iocl|diesel|gas station')) ||
+        merchantLower.contains(RegExp(r'fuel|petrol|hpcl|bpcl|iocl'))) {
+      return 'Fuel';
+    }
+    if (bodyLower.contains('rent') || merchantLower.contains('rent')) {
+      return 'Rent';
+    }
+    if (bodyLower.contains(RegExp(r'bill|postpaid|prepaid|electricity|mobile|dth|recharge|airtel|jio|vodafone')) ||
+        merchantLower.contains(RegExp(r'bill|electricity|mobile|dth'))) {
+      return 'Bills';
+    }
     
     return 'Other';
   }
+
 }

@@ -105,12 +105,23 @@ class _HomePageState extends State<HomePage> {
         return ValueListenableBuilder<List<TransactionModel>>(
           valueListenable: _transactionsNotifier,
           builder: (context, transactions, _) {
-            final totalCredit = transactions.where((t) => t.type == 'credit').fold(0.0, (sum, t) => sum + t.amount);
-            final totalDebit = transactions.where((t) => t.type == 'debit').fold(0.0, (sum, t) => sum + t.amount);
+            // Calculate totals efficiently
+            double totalCredit = 0.0;
+            double totalDebit = 0.0;
+            for (final t in transactions) {
+              if (t.type == 'credit') {
+                totalCredit += t.amount;
+              } else if (t.type == 'debit') {
+                totalDebit += t.amount;
+              }
+            }
             final netSavings = totalCredit - totalDebit;
-            final savingsPercentage = totalCredit > 0 ? (netSavings / totalCredit * 100).clamp(0.0, 100.0) : 0.0;
+            final savingsPercentage = totalCredit > 0 
+                ? (netSavings / totalCredit * 100).clamp(0.0, 100.0) 
+                : 0.0;
 
-            final pages = [
+            // Build pages list efficiently
+            final pages = <Widget>[
               _buildHomePage(totalCredit, totalDebit, netSavings, savingsPercentage, transactions),
               TransactionsPage(transactions: transactions),
               DashboardPage(transactions: transactions),
@@ -135,7 +146,7 @@ class _HomePageState extends State<HomePage> {
                       end: Alignment.bottomRight,
                       colors: [
                         Theme.of(context).colorScheme.primary,
-                        Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
                       ],
                     ),
                   ),
@@ -176,7 +187,7 @@ class _HomePageState extends State<HomePage> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Theme.of(context).colorScheme.primary.withOpacity(0.05),
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
                       Theme.of(context).scaffoldBackgroundColor,
                     ],
                   ),
@@ -187,7 +198,7 @@ class _HomePageState extends State<HomePage> {
                 decoration: BoxDecoration(
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 10,
                       offset: const Offset(0, -2),
                     ),
@@ -264,7 +275,7 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: (isPositive ? Colors.green : Colors.red).withOpacity(0.3),
+                    color: (isPositive ? Colors.green : Colors.red).withValues(alpha: 0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -279,7 +290,7 @@ class _HomePageState extends State<HomePage> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
@@ -296,7 +307,7 @@ class _HomePageState extends State<HomePage> {
                               Text(
                                 'Net Savings',
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -327,7 +338,7 @@ class _HomePageState extends State<HomePage> {
                                 Text(
                                   'Savings Rate',
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.9),
+                                    color: Colors.white.withValues(alpha: 0.9),
                                     fontSize: 12,
                                   ),
                                 ),
@@ -337,7 +348,7 @@ class _HomePageState extends State<HomePage> {
                                   child: LinearProgressIndicator(
                                     value: savingsPercentage / 100,
                                     minHeight: 8,
-                                    backgroundColor: Colors.white.withOpacity(0.3),
+                                    backgroundColor: Colors.white.withValues(alpha: 0.3),
                                     valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                                   ),
                                 ),
@@ -395,10 +406,10 @@ class _HomePageState extends State<HomePage> {
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -408,7 +419,7 @@ class _HomePageState extends State<HomePage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -435,7 +446,7 @@ class _HomePageState extends State<HomePage> {
                           'Use Dashboard to see spending charts and Coach for AI-powered financial advice based on your transactions.',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                             height: 1.4,
                           ),
                         ),
@@ -466,7 +477,7 @@ class _HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -479,7 +490,7 @@ class _HomePageState extends State<HomePage> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -493,7 +504,7 @@ class _HomePageState extends State<HomePage> {
             label,
             style: TextStyle(
               fontSize: 13,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -524,13 +535,13 @@ class _HomePageState extends State<HomePage> {
           end: Alignment.bottomRight,
           colors: [
             Theme.of(context).colorScheme.secondaryContainer,
-            Theme.of(context).colorScheme.tertiaryContainer.withOpacity(0.5),
+            Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.5),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -542,7 +553,7 @@ class _HomePageState extends State<HomePage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -560,7 +571,7 @@ class _HomePageState extends State<HomePage> {
                   'Total Transactions',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -606,7 +617,7 @@ class _HomePageState extends State<HomePage> {
           '$label: $count',
           style: TextStyle(
             fontSize: 11,
-            color: color.withOpacity(0.8),
+            color: color.withValues(alpha: 0.8),
             fontWeight: FontWeight.w600,
           ),
         ),

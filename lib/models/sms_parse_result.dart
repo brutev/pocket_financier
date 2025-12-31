@@ -11,6 +11,7 @@ class SmsParseResult {
   final double? availableBalance;
   final DateTime? transactionDate;
   final String? bankName;
+  final String? merchantName;
   final String extractionMethod;
   final String rawSMS;
   final String sender;
@@ -28,6 +29,7 @@ class SmsParseResult {
     this.availableBalance,
     this.transactionDate,
     this.bankName,
+    this.merchantName,
     required this.extractionMethod,
     required this.rawSMS,
     required this.sender,

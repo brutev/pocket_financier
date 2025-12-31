@@ -89,6 +89,9 @@ class BankingSmsParser {
       amount = double.tryParse(amountStr);
     }
     
+    // Extract transaction date from SMS text
+    DateTime? transactionDate = _extractTransactionDate(text);
+    
     // Extract account last 4 digits
     final accountRegex = RegExp(r'A/c\s*XX(\d{4})', caseSensitive: false);
     final accountMatch = accountRegex.firstMatch(text);
@@ -109,6 +112,9 @@ class BankingSmsParser {
       final balanceStr = balanceMatch.group(1)!.replaceAll(',', '');
       availableBalance = double.tryParse(balanceStr);
     }
+    
+    // Extract merchant/payee name (common patterns)
+    final merchantName = _extractMerchantName(text);
     
     // Calculate confidence
     ConfidenceLevel confidence;
@@ -142,13 +148,118 @@ class BankingSmsParser {
       accountLast4Digits: accountLast4,
       transactionMode: transactionMode.isEmpty ? null : transactionMode,
       availableBalance: availableBalance,
+      transactionDate: transactionDate,
       bankName: 'HDFC Bank',
+      merchantName: merchantName,
       extractionMethod: 'hdfc_template',
       rawSMS: text,
       sender: sender,
       failureReasons: failureReasons,
       warnings: warnings,
     );
+  }
+  
+  // Helper method to extract transaction date from SMS text
+  static DateTime? _extractTransactionDate(String text) {
+    try {
+      // Pattern 1: "on DD-MMM-YYYY" or "on DD/MM/YYYY"
+      final datePattern1 = RegExp(r'on\s+(\d{1,2}[-/]\w+[-/]\d{2,4})', caseSensitive: false);
+      final match1 = datePattern1.firstMatch(text);
+      if (match1 != null) {
+        final dateStr = match1.group(1)!;
+        final date = _parseDateString(dateStr);
+        if (date != null) return date;
+      }
+      
+      // Pattern 2: "on DD-MM-YYYY" or "on DD/MM/YYYY"
+      final datePattern2 = RegExp(r'on\s+(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})', caseSensitive: false);
+      final match2 = datePattern2.firstMatch(text);
+      if (match2 != null) {
+        final dateStr = match2.group(1)!;
+        final date = _parseDateString(dateStr);
+        if (date != null) return date;
+      }
+      
+      // Pattern 3: "DD-MMM-YYYY" standalone
+      final datePattern3 = RegExp(r'(\d{1,2}[-/]\w{3}[-/]\d{2,4})', caseSensitive: false);
+      final match3 = datePattern3.firstMatch(text);
+      if (match3 != null) {
+        final dateStr = match3.group(1)!;
+        final date = _parseDateString(dateStr);
+        if (date != null) return date;
+      }
+    } catch (e) {
+      // Return null if parsing fails
+    }
+    return null;
+  }
+  
+  static DateTime? _parseDateString(String dateStr) {
+    try {
+      // Simple parsing for common Indian date formats
+      final parts = dateStr.split(RegExp(r'[-/]'));
+      if (parts.length == 3) {
+        int? day = int.tryParse(parts[0]);
+        int? year = int.tryParse(parts[2]);
+        if (day != null && year != null) {
+          // Handle month
+          int? month;
+          if (int.tryParse(parts[1]) != null) {
+            month = int.parse(parts[1]);
+          } else {
+            // Month name
+            final monthNames = {
+              'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+              'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+            };
+            month = monthNames[parts[1].toLowerCase().substring(0, 3)];
+          }
+          
+          if (month != null) {
+            // Handle 2-digit year
+            if (year < 100) {
+              year = year < 50 ? 2000 + year : 1900 + year;
+            }
+            
+            return DateTime(year, month, day);
+          }
+        }
+      }
+    } catch (e) {
+      // Return null if parsing fails
+    }
+    return null;
+  }
+  
+  static String? _extractMerchantName(String text) {
+    try {
+      // Pattern 1: "to [merchant]" or "from [merchant]"
+      final toPattern = RegExp(r'(?:to|from)\s+([A-Z][A-Za-z\s&]+?)(?:\s+on|\s+via|\s+for|\.|$)', caseSensitive: false);
+      final toMatch = toPattern.firstMatch(text);
+      if (toMatch != null) {
+        final merchant = toMatch.group(1)?.trim();
+        if (merchant != null && merchant.length > 2 && merchant.length < 50) {
+          return merchant;
+        }
+      }
+      
+      // Pattern 2: UPI merchant (UPI/[merchant])
+      final upiPattern = RegExp(r'UPI[/-]([A-Za-z0-9]+)', caseSensitive: false);
+      final upiMatch = upiPattern.firstMatch(text);
+      if (upiMatch != null) {
+        return upiMatch.group(1);
+      }
+      
+      // Pattern 3: Merchant name in quotes or brackets
+      final quotedPattern = RegExp(r'''["']([^"']+)["']''', caseSensitive: false);
+      final quotedMatch = quotedPattern.firstMatch(text);
+      if (quotedMatch != null) {
+        return quotedMatch.group(1)?.trim();
+      }
+    } catch (e) {
+      // Return null if extraction fails
+    }
+    return null;
   }
 
   static SmsParseResult _parseSbiSms(String sender, String text) {
@@ -183,10 +294,32 @@ class BankingSmsParser {
       amount = double.tryParse(amountStr);
     }
     
+    // Extract transaction date from SMS text
+    final transactionDate = _extractTransactionDate(text);
+    
     // Generic account extraction
     final accountRegex = RegExp(r'(?:A/c|Account).*?[xX*]{2,}(\d{4})', caseSensitive: false);
     final accountMatch = accountRegex.firstMatch(text);
     final accountLast4 = accountMatch?.group(1);
+    
+    // Extract transaction mode
+    final modes = ['NEFT', 'IMPS', 'UPI', 'RTGS', 'ATM', 'POS', 'DEBIT CARD', 'CREDIT CARD'];
+    final transactionMode = modes.firstWhere(
+      (mode) => textLower.contains(mode.toLowerCase()),
+      orElse: () => '',
+    );
+    
+    // Extract available balance
+    final balanceRegex = RegExp(r'(?:Avl Bal|Available Balance|Balance|Bal)[\s:]*?(?:Rs\.?\s*|₹\s*|INR\s*)([\d,]+(?:\.\d{2})?)', caseSensitive: false);
+    final balanceMatch = balanceRegex.firstMatch(text);
+    double? availableBalance;
+    if (balanceMatch != null) {
+      final balanceStr = balanceMatch.group(1)!.replaceAll(',', '');
+      availableBalance = double.tryParse(balanceStr);
+    }
+    
+    // Extract merchant/payee name
+    final merchantName = _extractMerchantName(text);
     
     // Calculate confidence
     ConfidenceLevel confidence;
@@ -204,7 +337,11 @@ class BankingSmsParser {
       transactionType: transactionType,
       amount: amount,
       accountLast4Digits: accountLast4,
+      transactionMode: transactionMode.isEmpty ? null : transactionMode,
+      availableBalance: availableBalance,
+      transactionDate: transactionDate,
       bankName: bankName,
+      merchantName: merchantName,
       extractionMethod: method,
       rawSMS: text,
       sender: sender,
