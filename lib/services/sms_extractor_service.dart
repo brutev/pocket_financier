@@ -1,42 +1,26 @@
 import '../models/transaction_data.dart';
+import '../constants/banking_constants.dart';
 
 class SmsExtractorService {
-  static const _bankSenders = {
-    'HDFCBK', 'SBIINB', 'ICICIB', 'AXISBK', 'PNBSMS', 'SCBANK', 'CITIBK',
-    'KOTAK', 'YESBNK', 'BOIIND', 'INDBNK', 'UNIONB', 'CANBKS', 'MAHABK',
-    'FEDBK', 'IDBIBK', 'UCOBKS', 'PSBANK'
-  };
-
-  static const _spamKeywords = [
-    'click here', 'claim now', 'verify now', 'update kyc', 'congratulations',
-    'won', 'prize', 'lottery', 'reward', 'loan approved', 'instant loan',
-    'pre-approved', 'pre approved', 'limited time', 'expire', 'suspended',
-    'blocked', 'call immediately', 'urgent action', 'act now', 'www.',
-    'http://', 'https://', 'bit.ly', 'tinyurl', 'otp'
-  ];
-
-  static const _creditKeywords = ['credited', 'deposited', 'received', 'added', 'cr', 'credit'];
-  static const _debitKeywords = ['debited', 'withdrawn', 'paid', 'deducted', 'dr', 'debit', 'spent', 'purchase'];
-  static const _transactionModes = ['NEFT', 'IMPS', 'UPI', 'RTGS', 'ATM', 'POS', 'DEBIT CARD', 'CREDIT CARD', 'NETBANKING', 'CHEQUE', 'CASH', 'MOBILE BANKING'];
 
   static TransactionData extractTransaction(String message, String sender, [DateTime? timestamp]) {
     final msgLower = message.toLowerCase();
     
     // Step 1: Sender validation
-    if (!_bankSenders.contains(sender.toUpperCase())) {
+    if (!BankingConstants.bankSenders.contains(sender.toUpperCase())) {
       return TransactionData(isValid: false);
     }
 
     // Step 2: Spam detection
-    if (_spamKeywords.any((keyword) => msgLower.contains(keyword))) {
+    if (BankingConstants.spamKeywords.any((keyword) => msgLower.contains(keyword))) {
       return TransactionData(isValid: false);
     }
 
     // Step 3: Transaction type detection
     String? transactionType;
-    if (_creditKeywords.any((keyword) => msgLower.contains(keyword))) {
+    if (BankingConstants.creditKeywords.any((keyword) => msgLower.contains(keyword))) {
       transactionType = 'CREDIT';
-    } else if (_debitKeywords.any((keyword) => msgLower.contains(keyword))) {
+    } else if (BankingConstants.debitKeywords.any((keyword) => msgLower.contains(keyword))) {
       transactionType = 'DEBIT';
     } else {
       return TransactionData(isValid: false);
@@ -57,7 +41,7 @@ class SmsExtractorService {
     final accountLast4 = accountMatch?.group(1);
 
     // Step 6: Transaction mode
-    final transactionMode = _transactionModes.firstWhere(
+    final transactionMode = BankingConstants.transactionModes.firstWhere(
       (mode) => msgLower.contains(mode.toLowerCase()),
       orElse: () => '',
     );

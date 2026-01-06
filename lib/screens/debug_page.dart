@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/transaction.dart';
 import '../data/transaction_db.dart';
+import '../utils/transaction_utils.dart';
 
 class DebugPage extends StatefulWidget {
   const DebugPage({super.key});
@@ -30,8 +31,8 @@ class _DebugPageState extends State<DebugPage> {
 
   Future<void> _loadData() async {
     final transactions = await TransactionDb.getAll();
-    final credit = transactions.where((t) => t.type == 'credit').fold(0.0, (sum, t) => sum + t.amount);
-    final debit = transactions.where((t) => t.type == 'debit').fold(0.0, (sum, t) => sum + t.amount);
+    final credit = TransactionUtils.calculateTotalCredit(transactions);
+    final debit = TransactionUtils.calculateTotalDebit(transactions);
     
     _transactionsNotifier.value = transactions;
     _totalCreditNotifier.value = credit;
@@ -60,8 +61,8 @@ class _DebugPageState extends State<DebugPage> {
                           child: Column(
                             children: [
                               Text('Total Transactions: ${transactions.length}'),
-                              Text('Credit Count: ${transactions.where((t) => t.type == 'credit').length}'),
-                              Text('Debit Count: ${transactions.where((t) => t.type == 'debit').length}'),
+                              Text('Credit Count: ${TransactionUtils.countCreditTransactions(transactions)}'),
+                              Text('Debit Count: ${TransactionUtils.countDebitTransactions(transactions)}'),
                               Text('Total Credit: ₹${totalCredit.toStringAsFixed(2)}'),
                               Text('Total Debit: ₹${totalDebit.toStringAsFixed(2)}'),
                               Text('Net: ₹${(totalCredit - totalDebit).toStringAsFixed(2)}'),
