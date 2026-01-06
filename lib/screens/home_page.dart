@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/transaction.dart';
 import '../data/transaction_db.dart';
 import '../services/sms_service.dart';
+import '../utils/transaction_utils.dart';
 import 'transactions_page.dart';
 import 'dashboard_page.dart';
 import 'coach_page.dart';
@@ -105,20 +106,11 @@ class _HomePageState extends State<HomePage> {
         return ValueListenableBuilder<List<TransactionModel>>(
           valueListenable: _transactionsNotifier,
           builder: (context, transactions, _) {
-            // Calculate totals efficiently
-            double totalCredit = 0.0;
-            double totalDebit = 0.0;
-            for (final t in transactions) {
-              if (t.type == 'credit') {
-                totalCredit += t.amount;
-              } else if (t.type == 'debit') {
-                totalDebit += t.amount;
-              }
-            }
-            final netSavings = totalCredit - totalDebit;
-            final savingsPercentage = totalCredit > 0 
-                ? (netSavings / totalCredit * 100).clamp(0.0, 100.0) 
-                : 0.0;
+            // Calculate totals efficiently using utility functions
+            final totalCredit = TransactionUtils.calculateTotalCredit(transactions);
+            final totalDebit = TransactionUtils.calculateTotalDebit(transactions);
+            final netSavings = TransactionUtils.calculateNetSavings(totalCredit, totalDebit);
+            final savingsPercentage = TransactionUtils.calculateSavingsPercentage(totalCredit, netSavings);
 
             // Build pages list efficiently
             final pages = <Widget>[
@@ -525,8 +517,8 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildTransactionCountCard(BuildContext context, List<TransactionModel> transactions) {
     final transactionCount = transactions.length;
-    final creditCount = transactions.where((t) => t.type == 'credit').length;
-    final debitCount = transactions.where((t) => t.type == 'debit').length;
+    final creditCount = TransactionUtils.countCreditTransactions(transactions);
+    final debitCount = TransactionUtils.countDebitTransactions(transactions);
 
     return Container(
       decoration: BoxDecoration(
