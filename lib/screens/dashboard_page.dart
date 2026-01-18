@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/transaction.dart';
+import '../utils/transaction_utils.dart';
 
 class DashboardPage extends StatelessWidget {
   final List<TransactionModel> transactions;
@@ -21,10 +22,7 @@ class DashboardPage extends StatelessWidget {
       );
     }
 
-    final Map<String, double> categoryTotals = {};
-    for (final tx in debitTransactions) {
-      categoryTotals[tx.category] = (categoryTotals[tx.category] ?? 0) + tx.amount;
-    }
+    final categoryTotals = TransactionUtils.calculateCategoryTotals(transactions);
 
     final colors = [Colors.blue, Colors.red, Colors.green, Colors.orange, Colors.purple, Colors.teal];
     final sections = categoryTotals.entries.map((entry) {
