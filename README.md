@@ -143,6 +143,84 @@ flutter run
 4. Push to branch (`git push origin feature/new-bank`)
 5. Create Pull Request
 
+## Roadmap / Upcoming Features
+
+**1. Budget Management** 💵
+- Set monthly/weekly budgets per category (Food, Shopping, etc.)
+- Budget alerts when approaching limits
+- Visual progress bars showing budget usage
+- Rollover unused budget to next month
+
+**2. Recurring Transactions Detection** 🔄
+- Auto-detect recurring payments (subscriptions, EMIs, rent)
+- Predict upcoming expenses
+- Reminder notifications for due payments
+
+**3. Export & Backup** 📤
+- Export transactions to CSV/Excel
+- PDF monthly statements
+- Cloud backup (Google Drive/local backup)
+- Data restore functionality
+
+**4. Enhanced Analytics** 📈
+- Year-over-year comparison
+- Spending trends over time
+- Weekly spending heatmap
+- Top merchants/payees analysis
+- Average daily/weekly spending
+
+**5. Goals & Savings Tracker** 🎯
+- Set savings goals (e.g., "Save ₹50,000 for vacation")
+- Track progress toward goals
+- Suggested savings based on spending patterns
+
+**6. Dark Mode** 🌙
+- System-based or manual dark/light theme toggle
+- AMOLED-friendly dark theme
+
+**7. Transaction Search & Filters** 🔍
+- Search by merchant, amount, category
+- Filter by date range, transaction type
+- Advanced filtering options
+
+**8. Bill Reminders & Notifications** 🔔
+- Set reminders for upcoming bills
+- Push notifications for large transactions
+- Weekly/monthly spending summary notifications
+
+**9. Multi-Currency Support** 💱
+- Support for international transactions
+- Currency conversion display
+
+**10. Transaction Tags & Notes** 🏷️
+- Add custom tags to transactions
+- Add notes/comments to transactions
+- Split transactions between categories
+
+**11. Insights & Tips** 💡
+- Smart insights like "You spent 20% more on Food this month"
+- Money-saving tips based on patterns
+- Achievement badges for savings milestones
+
+**12. Widgets** 📲
+- Home screen widget showing balance/recent transactions
+- Quick glance at spending for the day/week
+
+## Priority Features
+
+| Priority | Feature | Complexity | Impact |
+|----------|---------|------------|--------|
+| 1️⃣ | Dark Mode | Easy | High |
+| 2️⃣ | Transaction Search & Filters | Medium | High |
+| 3️⃣ | Export to CSV | Easy | Medium |
+| 4️⃣ | Budget Management | Medium | High |
+| 5️⃣ | Monthly Insights/Summary | Medium | High |
+
+## Last Updated
+
+- Last Updated: 2026-01-10
+- Maintainer: @brutev
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
