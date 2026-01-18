@@ -19,6 +19,18 @@ class _HomePageState extends State<HomePage> {
   final ValueNotifier<List<TransactionModel>> _transactionsNotifier = ValueNotifier<List<TransactionModel>>([]);
   final ValueNotifier<bool> _loadingNotifier = ValueNotifier<bool>(false);
 
+  DateTime? _startDate;
+  DateTime? _endDate;
+  List<TransactionModel> get _filteredTransactions {
+    if (_startDate == null && _endDate == null) return _transactionsNotifier.value;
+    return _transactionsNotifier.value.where((tx) {
+      final date = tx.effectiveDate;
+      if (_startDate != null && date.isBefore(_startDate!)) return false;
+      if (_endDate != null && date.isAfter(_endDate!)) return false;
+      return true;
+    }).toList();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -105,10 +117,57 @@ class _HomePageState extends State<HomePage> {
         return ValueListenableBuilder<List<TransactionModel>>(
           valueListenable: _transactionsNotifier,
           builder: (context, transactions, _) {
-            // Calculate totals efficiently
+            // Date filter UI
+            Widget dateFilter = Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _startDate ?? DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: _endDate ?? DateTime.now(),
+                        );
+                        if (picked != null) setState(() => _startDate = picked);
+                      },
+                      child: Text(_startDate == null ? 'Start Date' : 'From: ${_startDate!.toLocal().toString().split(' ')[0]}'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _endDate ?? DateTime.now(),
+                          firstDate: _startDate ?? DateTime(2000),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null) setState(() => _endDate = picked);
+                      },
+                      child: Text(_endDate == null ? 'End Date' : 'To: ${_endDate!.toLocal().toString().split(' ')[0]}'),
+                    ),
+                  ),
+                  if (_startDate != null || _endDate != null)
+                    IconButton(
+                      icon: const Icon(Icons.clear),
+                      tooltip: 'Clear filter',
+                      onPressed: () => setState(() {
+                        _startDate = null;
+                        _endDate = null;
+                      }),
+                    ),
+                ],
+              ),
+            );
+
+            final filtered = _filteredTransactions;
             double totalCredit = 0.0;
             double totalDebit = 0.0;
-            for (final t in transactions) {
+            for (final t in filtered) {
               if (t.type == 'credit') {
                 totalCredit += t.amount;
               } else if (t.type == 'debit') {
@@ -116,16 +175,20 @@ class _HomePageState extends State<HomePage> {
               }
             }
             final netSavings = totalCredit - totalDebit;
-            final savingsPercentage = totalCredit > 0 
-                ? (netSavings / totalCredit * 100).clamp(0.0, 100.0) 
+            final savingsPercentage = totalCredit > 0
+                ? (netSavings / totalCredit * 100).clamp(0.0, 100.0)
                 : 0.0;
 
-            // Build pages list efficiently
             final pages = <Widget>[
-              _buildHomePage(totalCredit, totalDebit, netSavings, savingsPercentage, transactions),
-              TransactionsPage(transactions: transactions),
-              DashboardPage(transactions: transactions),
-              CoachPage(transactions: transactions),
+              Column(
+                children: [
+                  dateFilter,
+                  Expanded(child: _buildHomePage(totalCredit, totalDebit, netSavings, savingsPercentage, filtered)),
+                ],
+              ),
+              TransactionsPage(transactions: filtered),
+              DashboardPage(transactions: filtered),
+              CoachPage(transactions: filtered),
             ];
 
             return Scaffold(
