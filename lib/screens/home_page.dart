@@ -20,6 +20,18 @@ class _HomePageState extends State<HomePage> {
   final ValueNotifier<List<TransactionModel>> _transactionsNotifier = ValueNotifier<List<TransactionModel>>([]);
   final ValueNotifier<bool> _loadingNotifier = ValueNotifier<bool>(false);
 
+  DateTime? _startDate;
+  DateTime? _endDate;
+  List<TransactionModel> get _filteredTransactions {
+    if (_startDate == null && _endDate == null) return _transactionsNotifier.value;
+    return _transactionsNotifier.value.where((tx) {
+      final date = tx.effectiveDate;
+      if (_startDate != null && date.isBefore(_startDate!)) return false;
+      if (_endDate != null && date.isAfter(_endDate!)) return false;
+      return true;
+    }).toList();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -112,12 +124,16 @@ class _HomePageState extends State<HomePage> {
             final netSavings = TransactionUtils.calculateNetSavings(totalCredit, totalDebit);
             final savingsPercentage = TransactionUtils.calculateSavingsPercentage(totalCredit, netSavings);
 
-            // Build pages list efficiently
             final pages = <Widget>[
-              _buildHomePage(totalCredit, totalDebit, netSavings, savingsPercentage, transactions),
-              TransactionsPage(transactions: transactions),
-              DashboardPage(transactions: transactions),
-              CoachPage(transactions: transactions),
+              Column(
+                children: [
+                  dateFilter,
+                  Expanded(child: _buildHomePage(totalCredit, totalDebit, netSavings, savingsPercentage, filtered)),
+                ],
+              ),
+              TransactionsPage(transactions: filtered),
+              DashboardPage(transactions: filtered),
+              CoachPage(transactions: filtered),
             ];
 
             return Scaffold(

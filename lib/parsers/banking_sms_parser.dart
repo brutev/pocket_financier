@@ -211,13 +211,11 @@ class BankingSmsParser {
     // Extract transaction mode and details
     String? transactionMode;
     String? merchantName;
-    String? referenceId;
     
     // UPI pattern: UPI/P2M/REF/MERCHANT
     final upiMatch = RegExp(r'UPI/([^/]+)/([^/]+)/(.+?)(?:\n|$)', caseSensitive: false).firstMatch(text);
     if (upiMatch != null) {
       transactionMode = 'UPI';
-      referenceId = upiMatch.group(2);
       merchantName = upiMatch.group(3)?.trim();
     }
     
@@ -225,7 +223,6 @@ class BankingSmsParser {
     final neftMatch = RegExp(r'NEFT/([^/]+)/(.+?)(?:\.|\n|$)', caseSensitive: false).firstMatch(text);
     if (neftMatch != null) {
       transactionMode = 'NEFT';
-      referenceId = neftMatch.group(1);
       merchantName = neftMatch.group(2)?.trim();
     }
     
