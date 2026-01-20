@@ -5,10 +5,11 @@ import '../models/transaction.dart';
 import '../data/transaction_db.dart';
 import '../parsers/banking_sms_parser.dart';
 import '../models/sms_parse_result.dart';
+import '../constants/banking_constants.dart';
+import '../utils/category_classifier.dart';
 
 class SmsService {
   static final SmsQuery _query = SmsQuery();
-  static const _bankSenders = {'HDFCBK', 'SBIINB', 'ICICIB', 'AXISBK', 'PNBSMS', 'SCBANK', 'CITIBK', 'KOTAK', 'YESBNK', 'BOIIND', 'INDBNK', 'UNIONB', 'CANBKS', 'MAHABK', 'FEDBK', 'IDBIBK', 'UCOBKS', 'PSBANK'};
 
   static Future<bool> requestPermission() async {
     final status = await Permission.sms.request();
@@ -66,7 +67,7 @@ class SmsService {
         final body = message.body ?? '';
         
         final senderUpper = sender.toUpperCase();
-        if (_bankSenders.any((bank) => senderUpper.contains(bank))) {
+        if (BankingConstants.bankSenders.any((bank) => senderUpper.contains(bank))) {
           bankSms++;
           if (kDebugMode) {
             debugPrint('[SmsService] Bank SMS from $sender: ${body.substring(0, body.length > 50 ? 50 : body.length)}...');
@@ -106,7 +107,7 @@ class SmsService {
       return null;
     }
     
-    final category = _guessCategory(body, result.merchantName);
+    final category = CategoryClassifier.classify(body, result.merchantName);
     final description = body.length > 200 ? '${body.substring(0, 200)}...' : body;
     final date = message.date ?? DateTime.now();
     
@@ -139,33 +140,4 @@ class SmsService {
       upiTransactionId: upiTransactionId,
     );
   }
-  
-  static String _guessCategory(String body, String? merchantName) {
-    final bodyLower = body.toLowerCase();
-    final merchantLower = merchantName?.toLowerCase() ?? '';
-    
-    // Enhanced categorization with merchant name
-    if (bodyLower.contains(RegExp(r'swiggy|zomato|restaurant|food|dominos|kfc|mcdonalds|pizza|burger')) ||
-        merchantLower.contains(RegExp(r'swiggy|zomato|restaurant|food|dominos|kfc|mcdonalds'))) {
-      return 'Food';
-    }
-    if (bodyLower.contains(RegExp(r'amazon|flipkart|myntra|ajio|shopping|mall|snapdeal')) ||
-        merchantLower.contains(RegExp(r'amazon|flipkart|myntra|ajio|shopping'))) {
-      return 'Shopping';
-    }
-    if (bodyLower.contains(RegExp(r'fuel|petrol|hpcl|bpcl|iocl|diesel|gas station')) ||
-        merchantLower.contains(RegExp(r'fuel|petrol|hpcl|bpcl|iocl'))) {
-      return 'Fuel';
-    }
-    if (bodyLower.contains('rent') || merchantLower.contains('rent')) {
-      return 'Rent';
-    }
-    if (bodyLower.contains(RegExp(r'bill|postpaid|prepaid|electricity|mobile|dth|recharge|airtel|jio|vodafone')) ||
-        merchantLower.contains(RegExp(r'bill|electricity|mobile|dth'))) {
-      return 'Bills';
-    }
-    
-    return 'Other';
-  }
-
 }

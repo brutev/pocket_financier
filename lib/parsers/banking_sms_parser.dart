@@ -1,50 +1,13 @@
 import '../models/sms_parse_result.dart';
+import '../constants/banking_constants.dart';
 
 class BankingSmsParser {
-  static const _bankSenders = {
-    'HDFCBK', 'SBIINB', 'ICICIB', 'AXISBK', 'PNBSMS', 'SCBANK', 'CITIBK',
-    'KOTAK', 'YESBNK', 'BOIIND', 'INDBNK', 'UNIONB', 'CANBKS', 'MAHABK',
-    'FEDBK', 'IDBIBK', 'UCOBKS', 'PSBANK'
-  };
-
-  static const _spamKeywords = [
-    // URLs and links
-    'http://', 'https://', 'bit.ly', 'tinyurl', 'www.', '.com/', '.in/', '.co/',
-    // Promotional terms
-    'click here', 'claim now', 'verify now', 'update kyc', 'congratulations',
-    'won', 'prize', 'lottery', 'reward', 'bonus', 'welcome bonus', 'free cash',
-    'loan approved', 'instant loan', 'pre-approved', 'pre approved', 
-    'limited time', 'expire', 'suspended', 'blocked', 'call immediately', 
-    'urgent action', 'act now', 'join today', 'sign up', 'complete kyc',
-    // Wallet/App promotions
-    'wallet', 'app download', 'install app', 'download now', 'get app',
-    'easy payments', 'secure payments', 'extra savings', 'use it for',
-    // Loan/Credit offers
-    'emi from', 'ready to be credited', 'up to rs', 'just complete',
-    '2-min kyc', 'finven', 'finplo',
-    // Generic spam indicators
-    'otp', 'dear customer'
-  ];
-
-  static const _spamPatterns = [
-    // Bonus/promotional patterns
-    r'rs\.?\s*\d+\s*welcome\s*bonus',
-    r'rs\.?\s*\d+\s*free\s*cash',
-    r'up\s*to\s*rs\.?\s*\d+.*credited',
-    r'emi\s*from\s*rs\.?\s*\d+',
-    // URL patterns
-    r'https?://[^\s]+',
-    r'[a-z]+\.[a-z]{2,3}/[^\s]*',
-    // App/wallet patterns
-    r'sign\s*up\s*for.*wallet',
-    r'use\s*it\s*for.*savings',
-  ];
 
   static SmsParseResult parse(String sender, String text) {
     try {
       // Layer 1: Sender validation
       final senderUpper = sender.toUpperCase();
-      if (!_bankSenders.any((bank) => senderUpper.contains(bank))) {
+      if (!BankingConstants.bankSenders.any((bank) => senderUpper.contains(bank))) {
         return SmsParseResult(
           isValid: false,
           confidence: ConfidenceLevel.invalid,
@@ -59,7 +22,7 @@ class BankingSmsParser {
       final textLower = text.toLowerCase();
       
       // Check spam keywords
-      if (_spamKeywords.any((keyword) => textLower.contains(keyword))) {
+      if (BankingConstants.spamKeywords.any((keyword) => textLower.contains(keyword))) {
         return SmsParseResult(
           isValid: false,
           confidence: ConfidenceLevel.invalid,
@@ -71,7 +34,7 @@ class BankingSmsParser {
       }
       
       // Check spam patterns
-      for (final pattern in _spamPatterns) {
+      for (final pattern in BankingConstants.spamPatterns) {
         if (RegExp(pattern, caseSensitive: false).hasMatch(text)) {
           return SmsParseResult(
             isValid: false,

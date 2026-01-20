@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/transaction.dart';
 import '../data/transaction_db.dart';
 import '../services/sms_service.dart';
+import '../utils/transaction_utils.dart';
 import 'transactions_page.dart';
 import 'dashboard_page.dart';
 import 'coach_page.dart';
@@ -117,67 +118,11 @@ class _HomePageState extends State<HomePage> {
         return ValueListenableBuilder<List<TransactionModel>>(
           valueListenable: _transactionsNotifier,
           builder: (context, transactions, _) {
-            // Date filter UI
-            Widget dateFilter = Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _startDate ?? DateTime.now(),
-                          firstDate: DateTime(2000),
-                          lastDate: _endDate ?? DateTime.now(),
-                        );
-                        if (picked != null) setState(() => _startDate = picked);
-                      },
-                      child: Text(_startDate == null ? 'Start Date' : 'From: ${_startDate!.toLocal().toString().split(' ')[0]}'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _endDate ?? DateTime.now(),
-                          firstDate: _startDate ?? DateTime(2000),
-                          lastDate: DateTime.now(),
-                        );
-                        if (picked != null) setState(() => _endDate = picked);
-                      },
-                      child: Text(_endDate == null ? 'End Date' : 'To: ${_endDate!.toLocal().toString().split(' ')[0]}'),
-                    ),
-                  ),
-                  if (_startDate != null || _endDate != null)
-                    IconButton(
-                      icon: const Icon(Icons.clear),
-                      tooltip: 'Clear filter',
-                      onPressed: () => setState(() {
-                        _startDate = null;
-                        _endDate = null;
-                      }),
-                    ),
-                ],
-              ),
-            );
-
-            final filtered = _filteredTransactions;
-            double totalCredit = 0.0;
-            double totalDebit = 0.0;
-            for (final t in filtered) {
-              if (t.type == 'credit') {
-                totalCredit += t.amount;
-              } else if (t.type == 'debit') {
-                totalDebit += t.amount;
-              }
-            }
-            final netSavings = totalCredit - totalDebit;
-            final savingsPercentage = totalCredit > 0
-                ? (netSavings / totalCredit * 100).clamp(0.0, 100.0)
-                : 0.0;
+            // Calculate totals efficiently using utility functions
+            final totalCredit = TransactionUtils.calculateTotalCredit(transactions);
+            final totalDebit = TransactionUtils.calculateTotalDebit(transactions);
+            final netSavings = TransactionUtils.calculateNetSavings(totalCredit, totalDebit);
+            final savingsPercentage = TransactionUtils.calculateSavingsPercentage(totalCredit, netSavings);
 
             final pages = <Widget>[
               Column(
@@ -588,8 +533,8 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildTransactionCountCard(BuildContext context, List<TransactionModel> transactions) {
     final transactionCount = transactions.length;
-    final creditCount = transactions.where((t) => t.type == 'credit').length;
-    final debitCount = transactions.where((t) => t.type == 'debit').length;
+    final creditCount = TransactionUtils.countCreditTransactions(transactions);
+    final debitCount = TransactionUtils.countDebitTransactions(transactions);
 
     return Container(
       decoration: BoxDecoration(
