@@ -5,7 +5,7 @@ import 'screens/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+  // await dotenv.load(fileName: ".env");
   
   // try {
   //   await GemmaService.ensureInitialized();
@@ -22,6 +22,7 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Pocket Financier',
       theme: ThemeData(
         primarySwatch: Colors.blue,
