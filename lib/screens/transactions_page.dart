@@ -8,6 +8,7 @@ class TransactionsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     if (transactions.isEmpty) {
       return const Center(
         child: Text(
@@ -16,6 +17,12 @@ class TransactionsPage extends StatelessWidget {
           style: TextStyle(fontSize: 16),
         ),
       );
+    }
+
+    // Log transactions to console
+    for (final tx in transactions) {
+      // ignore: avoid_print
+      print('[TransactionsPage] id: \u001b[32m${tx.id}\u001b[0m, date: ${tx.date}, amount: ${tx.amount}, type: ${tx.type}, category: ${tx.category}, desc: ${tx.description}');
     }
 
     return ListView.builder(

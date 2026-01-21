@@ -4,6 +4,18 @@ import '../constants/banking_constants.dart';
 class BankingSmsParser {
 
   static SmsParseResult parse(String sender, String text) {
+        // Improved filter: Ignore credit card bill reminders for all banks
+        final textLower = text.toLowerCase();
+        if (textLower.contains('is due on') && textLower.contains('minimum amount due')) {
+          return SmsParseResult(
+            isValid: false,
+            confidence: ConfidenceLevel.invalid,
+            extractionMethod: 'bill_reminder_general',
+            rawSMS: text,
+            sender: sender,
+            failureReasons: ['Credit card bill reminder, not a transaction'],
+          );
+        }
     try {
       // Layer 1: Sender validation
       final senderUpper = sender.toUpperCase();
@@ -162,17 +174,29 @@ class BankingSmsParser {
 
   static SmsParseResult _parseAxisSms(String sender, String text) {
     final textLower = text.toLowerCase();
-    
+
+    // Ignore credit card bill reminders (e.g., 'is due on')
+    if (textLower.contains('is due on')) {
+      return SmsParseResult(
+        isValid: false,
+        confidence: ConfidenceLevel.invalid,
+        extractionMethod: 'axis_bill_reminder',
+        rawSMS: text,
+        sender: sender,
+        failureReasons: ['Credit card bill reminder, not a transaction'],
+      );
+    }
+
     // Detect transaction type and account type
     String? transactionType;
     String? accountType = 'SAVINGS'; // Default
-    
+
     if (textLower.contains('credited') || textLower.contains('payment of') || textLower.contains('received')) {
       transactionType = 'CREDIT';
     } else if (textLower.contains('debited') || textLower.contains('spent')) {
       transactionType = 'DEBIT';
     }
-    
+
     // Detect account type
     if (textLower.contains('credit card')) {
       accountType = 'CREDIT_CARD';

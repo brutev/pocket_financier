@@ -74,8 +74,116 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Widget _buildDateFilter() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 20.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _startDate ?? DateTime.now(),
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) {
+                  setState(() {
+                    _startDate = picked;
+                  });
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_today, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _startDate != null
+                            ? 'From: ${_startDate!.toLocal().toString().split(' ')[0]}'
+                            : 'From',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: GestureDetector(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _endDate ?? DateTime.now(),
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) {
+                  setState(() {
+                    _endDate = picked;
+                  });
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_today, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      _endDate != null
+                          ? 'To: ${_endDate!.toLocal().toString().split(' ')[0]}'
+                          : 'To',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (_startDate != null || _endDate != null)
+            IconButton(
+              icon: const Icon(Icons.clear, size: 20),
+              tooltip: 'Clear filter',
+              onPressed: () {
+                setState(() {
+                  _startDate = null;
+                  _endDate = null;
+                });
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _loadTransactions() async {
     final transactions = await TransactionDb.getAll();
+    // Log transactions to console
+    for (final tx in transactions) {
+      // ignore: avoid_print
+      print('[Transaction] id: [32m${tx.id}[0m, date: ${tx.date}, amount: ${tx.amount}, type: ${tx.type}, category: ${tx.category}, desc: ${tx.description}');
+    }
     _transactionsNotifier.value = transactions;
   }
 
@@ -118,16 +226,22 @@ class _HomePageState extends State<HomePage> {
         return ValueListenableBuilder<List<TransactionModel>>(
           valueListenable: _transactionsNotifier,
           builder: (context, transactions, _) {
+                        // Log transactions on every update
+                        // ignore: avoid_print
+                        print('[HomePage] Transactions updated. Count: [34m${transactions.length}[0m');
             // Calculate totals efficiently using utility functions
             final totalCredit = TransactionUtils.calculateTotalCredit(transactions);
             final totalDebit = TransactionUtils.calculateTotalDebit(transactions);
             final netSavings = TransactionUtils.calculateNetSavings(totalCredit, totalDebit);
             final savingsPercentage = TransactionUtils.calculateSavingsPercentage(totalCredit, netSavings);
 
+            // Reference _filteredTransactions to avoid unused warning
+            final filtered = _filteredTransactions;
+
             final pages = <Widget>[
               Column(
                 children: [
-                  dateFilter,
+                  _buildDateFilter(),
                   Expanded(child: _buildHomePage(totalCredit, totalDebit, netSavings, savingsPercentage, filtered)),
                 ],
               ),
