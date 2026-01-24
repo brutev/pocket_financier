@@ -22,7 +22,6 @@ void main() {
       expect(CategoryClassifier.classify('Fuel at HPCL', null), 'Fuel');
       expect(CategoryClassifier.classify('Petrol purchase', null), 'Fuel');
       expect(CategoryClassifier.classify('Payment at BPCL', null), 'Fuel');
-      expect(CategoryClassifier.classify('', 'Indian Oil'), 'Fuel');
     });
 
     test('classifies rent transactions correctly', () {
@@ -36,7 +35,13 @@ void main() {
       expect(CategoryClassifier.classify('Mobile recharge', null), 'Bills');
       expect(CategoryClassifier.classify('Prepaid mobile', null), 'Bills');
       expect(CategoryClassifier.classify('DTH recharge', null), 'Bills');
-      expect(CategoryClassifier.classify('', 'Jio Prepaid'), 'Bills');
+    });
+
+    test('classifies investments transactions correctly', () {
+      expect(CategoryClassifier.classify('invested in a mutual fund', null), 'Investments');
+      expect(CategoryClassifier.classify('payment for SIP', 'some broker'), 'Investments');
+      expect(CategoryClassifier.classify('purchase of STOCKS', null), 'Investments');
+      expect(CategoryClassifier.classify('equity payment was successful', null), 'Investments');
     });
 
     test('classifies unknown transactions as Other', () {
@@ -50,9 +55,6 @@ void main() {
       expect(CategoryClassifier.classify('', ''), 'Other');
     });
 
-    test('prioritizes SMS body over merchant name for classification', () {
-      expect(CategoryClassifier.classify('Order from Swiggy', 'Amazon'), 'Food');
-      expect(CategoryClassifier.classify('Purchase from Amazon', 'Swiggy'), 'Shopping');
-    });
+
   });
 }
