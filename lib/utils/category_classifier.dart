@@ -34,6 +34,12 @@ class CategoryClassifier {
       return 'Bills';
     }
     
+    // Investments category
+    if (bodyLower.contains(RegExp(r'mutual fund|stocks|sip|equity')) ||
+        merchantLower.contains(RegExp(r'mutual fund|stocks|sip|equity'))) {
+      return 'Investments';
+    }
+
     // Default category
     return 'Other';
   }

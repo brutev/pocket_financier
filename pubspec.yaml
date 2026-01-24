@@ -17,6 +17,7 @@ dependencies:
   flutter_sms_inbox: ^1.0.2
   permission_handler: ^11.3.1
   flutter_dotenv: ^6.0.0
+  dio: ^5.0.0
 
 dev_dependencies:
   flutter_test:
